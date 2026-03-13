@@ -213,42 +213,43 @@ export default function BatchMode({ settings }) {
     setEssays((prev) => prev.filter((e) => e.id !== id))
   }
 
+  async function processOne(essay, combo) {
+    updateEssayResult(essay.id, combo.key, { status: 'processing', result: null, error: null })
+    try {
+      const res = await fetch('/api/correct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          essay: essay.text,
+          temperature: combo.temperature,
+          topP: combo.topP,
+          model: settings.model,
+          preprompt: settings.preprompt,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Request failed')
+      updateEssayResult(essay.id, combo.key, {
+        status: 'done',
+        result: data.result,
+        timestamp: new Date().toISOString(),
+      })
+    } catch (err) {
+      updateEssayResult(essay.id, combo.key, {
+        status: 'error',
+        error: err.message,
+        timestamp: new Date().toISOString(),
+      })
+    }
+  }
+
   async function processAll() {
     if (processing || combos.length === 0) return
     setProcessing(true)
 
     const pending = essays.filter((e) => e.text.trim())
-    for (const essay of pending) {
-      for (const combo of combos) {
-        updateEssayResult(essay.id, combo.key, { status: 'processing', result: null, error: null })
-        try {
-          const res = await fetch('/api/correct', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              essay: essay.text,
-              temperature: combo.temperature,
-              topP: combo.topP,
-              model: settings.model,
-              preprompt: settings.preprompt,
-            }),
-          })
-          const data = await res.json()
-          if (!res.ok) throw new Error(data.error || 'Request failed')
-          updateEssayResult(essay.id, combo.key, {
-            status: 'done',
-            result: data.result,
-            timestamp: new Date().toISOString(),
-          })
-        } catch (err) {
-          updateEssayResult(essay.id, combo.key, {
-            status: 'error',
-            error: err.message,
-            timestamp: new Date().toISOString(),
-          })
-        }
-      }
-    }
+    const tasks = pending.flatMap((essay) => combos.map((combo) => processOne(essay, combo)))
+    await Promise.allSettled(tasks)
 
     setProcessing(false)
   }
