@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Essay Error Corrector — Gemini AI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface2: #22222f;
+      --border: #2e2e42;
+      --accent: #7c6af7;
+      --accent-hover: #9585ff;
+      --text: #e8e8f0;
+      --text-muted: #8888aa;
+      --error: #ff6b6b;
+      --success: #4ade80;
+      --warning: #facc15;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    header .logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+    header > span { font-size: 13px; color: var(--text-muted); }
+
+    /* Mode Tabs */
+    .mode-tabs {
+      margin-left: auto;
+      display: flex;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .mode-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+
+    .mode-tab:hover { color: var(--text); }
+
+    .mode-tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      min-height: 0;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    .sidebar h2 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .control-group { display: flex; flex-direction: column; gap: 10px; }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-label label { font-size: 14px; font-weight: 500; }
+
+    .value-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      min-width: 42px;
+      text-align: center;
+    }
+
+    .control-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: var(--accent-hover);
+      transform: scale(1.2);
+    }
+
+    .preset-buttons { display: flex; flex-direction: column; gap: 8px; }
+
+    .preset-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.2s, background 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .preset-btn:hover { border-color: var(--accent); background: rgba(124,106,247,0.08); }
+    .preset-btn.active { border-color: var(--accent); background: rgba(124,106,247,0.12); }
+    .preset-btn strong { font-size: 13px; font-weight: 600; }
+    .preset-btn small { font-size: 11px; color: var(--text-muted); }
+
+    /* Level toggles (batch mode) */
+    .level-toggle-group { display: flex; gap: 6px; }
+
+    .level-btn {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 8px 4px;
+      cursor: pointer;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+      font-family: inherit;
+    }
+
+    .level-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    .level-btn.active {
+      border-color: var(--accent);
+      background: rgba(124,106,247,0.15);
+      color: var(--accent);
+    }
+
+    .level-btn small { font-size: 10px; opacity: 0.8; font-variant-numeric: tabular-nums; }
+
+    .level-editor-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .level-editor-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .level-editor-item label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .level-editor-item input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 12px;
+      font-family: inherit;
+      text-align: center;
+      padding: 7px 6px;
+      outline: none;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .level-editor-item input:focus {
+      border-color: var(--accent);
+    }
+
+    .combo-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .combo-badge strong { color: var(--accent); font-size: 15px; }
+
+    /* Model dropdown */
+    .model-select-wrapper { position: relative; }
+    .model-select-wrapper::after {
+      content: '▾';
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+      font-size: 12px;
+    }
+
+    select#modelSelect {
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 9px 30px 9px 12px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    select#modelSelect:focus, select#modelSelect:hover { border-color: var(--accent); }
+    select#modelSelect option { background: var(--surface2); color: var(--text); }
+
+    /* ── Single mode ── */
+    .content {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 69px);
+      overflow: hidden;
+    }
+
+    .editor-area {
+      flex: 1;
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      overflow: hidden;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    .char-count { font-size: 12px; color: var(--text-muted); }
+
+    textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 20px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.7;
+      resize: none;
+      font-family: inherit;
+    }
+
+    textarea::placeholder { color: var(--text-muted); opacity: 0.6; }
+
+    .output-panel { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    .output-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .output-content::-webkit-scrollbar { width: 6px; }
+    .output-content::-webkit-scrollbar-track { background: transparent; }
+    .output-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .placeholder-msg { color: var(--text-muted); font-style: italic; text-align: center; margin-top: 40px; font-size: 14px; }
+
+    .output-content h2 { font-size: 16px; font-weight: 700; color: var(--text); margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .output-content h2:first-child { margin-top: 0; }
+    .output-content h3 { font-size: 14px; font-weight: 600; color: var(--accent); margin: 14px 0 6px; }
+    .output-content p { margin: 6px 0; color: var(--text); }
+    .output-content hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+    .output-content strong { color: var(--text); font-weight: 600; }
+
+    .corrected-block {
+      background: rgba(74, 222, 128, 0.07);
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+
+    /* Action bar */
+    .action-bar {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
+
+    .status-msg { font-size: 13px; color: var(--text-muted); margin-left: auto; }
+    .status-msg.loading { color: var(--accent); animation: pulse 1.2s infinite; }
+    .status-msg.error { color: var(--error); }
+    .status-msg.success { color: var(--success); }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Batch mode ── */
+    .batch-content {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 69px);
+      overflow: hidden;
+    }
+
+    .batch-body {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .batch-body::-webkit-scrollbar { width: 6px; }
+    .batch-body::-webkit-scrollbar-track { background: transparent; }
+    .batch-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Essay input list */
+    .essay-list-section {
+      border-bottom: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .essay-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .essay-list-header h3 {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .btn-add-essay {
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: 7px;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-add-essay:hover { border-color: var(--accent); color: var(--accent); }
+
+    .essay-input-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .essay-input-header {
+      padding: 8px 12px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .essay-num { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+    .remove-essay-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .remove-essay-btn:hover { color: var(--error); }
+
+    .essay-textarea {
+      width: 100%;
+      height: 100px;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+    }
+
+    /* Batch results */
+    .batch-results-section {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .batch-results-header {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .essay-result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .essay-result-header {
+      padding: 10px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .essay-result-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+
+    .essay-preview-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .essay-progress {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .combo-tabs-wrapper {
+      overflow-x: auto;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .combo-tabs-wrapper::-webkit-scrollbar { height: 3px; }
+    .combo-tabs-wrapper::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .combo-tabs {
+      display: flex;
+      padding: 6px 8px;
+      gap: 4px;
+      min-width: max-content;
+    }
+
+    .combo-tab {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+
+    .combo-tab:hover { border-color: var(--accent); color: var(--text); }
+
+    .combo-tab.active {
+      border-color: var(--accent);
+      background: rgba(124,106,247,0.15);
+      color: var(--accent);
+    }
+
+    .tab-status { font-size: 10px; }
+    .tab-status.done { color: var(--success); }
+    .tab-status.err { color: var(--error); }
+
+    .combo-result-content {
+      padding: 16px 20px;
+      font-size: 13px;
+      line-height: 1.7;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .combo-result-content::-webkit-scrollbar { width: 4px; }
+    .combo-result-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Reuse output-content styles inside combo-result-content */
+    .combo-result-content h2 { font-size: 15px; font-weight: 700; color: var(--text); margin: 16px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+    .combo-result-content h2:first-child { margin-top: 0; }
+    .combo-result-content h3 { font-size: 13px; font-weight: 600; color: var(--accent); margin: 12px 0 5px; }
+    .combo-result-content p { margin: 5px 0; color: var(--text); }
+    .combo-result-content hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+    .combo-result-content strong { color: var(--text); font-weight: 600; }
+    .combo-result-content .corrected-block { font-size: 13px; }
+
+    .result-loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 8px 0;
+    }
+
+    .result-loading .spinner {
+      border-top-color: var(--accent);
+      border-color: rgba(124,106,247,0.3);
+      border-top-color: var(--accent);
+    }
+
+    .result-error { color: var(--error); font-size: 13px; }
+
+    /* Progress bar */
+    .batch-progress-bar {
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      overflow: hidden;
+      flex: 1;
+      max-width: 160px;
+    }
+
+    .batch-progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 1px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    @media (max-width: 768px) {
+      .main { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+      .content { height: auto; }
+      .batch-content { height: auto; }
+      .editor-area { grid-template-rows: auto auto; height: auto; }
+      .mode-tabs { margin-left: 8px; }
+      header h1 { font-size: 15px; }
+      header > span { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✦</div>
+  <h1>Essay Error Corrector</h1>
+  <span>powered by Gemini AI</span>
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-mode="single" onclick="switchMode('single')">Single</button>
+    <button class="mode-tab" data-mode="batch" onclick="switchMode('batch')">Batch</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Sidebar (shared) -->
+  <aside class="sidebar">
+    <h2>Model</h2>
+    <div class="control-group">
+      <div class="model-select-wrapper">
+        <select id="modelSelect" disabled>
+          <option value="">Loading models...</option>
+        </select>
+      </div>
+      <p class="control-desc" id="modelDesc">Loading available models...</p>
+    </div>
+
+    <!-- Single mode controls -->
+    <div id="singleControls">
+      <div class="control-group">
+        <div class="control-label">
+          <label for="temperature">Temperature</label>
+          <span class="value-badge" id="tempDisplay">0.30</span>
+        </div>
+        <input type="range" id="temperature" min="0" max="2" step="0.01" value="0.30" />
+        <p class="control-desc">Controls randomness. Lower = more deterministic, higher = more creative.</p>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <label for="topP">Top P</label>
+          <span class="value-badge" id="topPDisplay">0.90</span>
+        </div>
+        <input type="range" id="topP" min="0" max="1" step="0.01" value="0.90" />
+        <p class="control-desc">Nucleus sampling threshold.</p>
+      </div>
+
+      <div>
+        <h2 style="margin-bottom: 12px;">Presets</h2>
+        <div class="preset-buttons">
+          <button class="preset-btn active" data-temp="0.10" data-topp="0.85" onclick="applyPreset(this)">
+            <strong>Precise</strong>
+            <small>Temp 0.10 · Top P 0.85 — Strict corrections</small>
+          </button>
+          <button class="preset-btn" data-temp="0.30" data-topp="0.90" onclick="applyPreset(this)">
+            <strong>Balanced</strong>
+            <small>Temp 0.30 · Top P 0.90 — Recommended</small>
+          </button>
+          <button class="preset-btn" data-temp="0.70" data-topp="0.95" onclick="applyPreset(this)">
+            <strong>Creative</strong>
+            <small>Temp 0.70 · Top P 0.95 — Flexible rewrites</small>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Batch mode controls -->
+    <div id="batchControls" style="display:none">
+      <div class="control-group">
+        <h2>Temperature Levels</h2>
+        <div class="level-toggle-group" id="tempLevelButtons"></div>
+        <div class="level-editor-grid" id="tempLevelEditors"></div>
+      </div>
+
+      <div class="control-group">
+        <h2>Top P Levels</h2>
+        <div class="level-toggle-group" id="topPLevelButtons"></div>
+        <div class="level-editor-grid" id="topPLevelEditors"></div>
+      </div>
+
+      <div class="combo-badge">
+        <strong id="comboCount">9</strong> combinations per essay
+      </div>
+    </div>
+  </aside>
+
+  <!-- Single mode content -->
+  <div id="singleContent" class="content">
+    <div class="editor-area">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="dot"></span>
+            Input Essay
+          </div>
+          <span class="char-count" id="charCount">0 characters</span>
+        </div>
+        <textarea
+          id="essayInput"
+          placeholder="Paste or type your essay here. The AI will check for spelling, punctuation, and grammar errors..."
+          spellcheck="false"
+        ></textarea>
+      </div>
+
+      <div class="panel output-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="dot" style="background: var(--success)"></span>
+            Correction Results
+          </div>
+        </div>
+        <div class="output-content" id="outputContent">
+          <p class="placeholder-msg">Results will appear here after analysis.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn-primary" id="submitBtn" onclick="submitEssay()">
+        <span>Analyze Essay</span>
+      </button>
+      <button class="btn-secondary" onclick="clearAll()">Clear</button>
+      <span class="status-msg" id="statusMsg"></span>
+    </div>
+  </div>
+
+  <!-- Batch mode content -->
+  <div id="batchContent" class="batch-content" style="display:none">
+    <div class="batch-body">
+      <!-- Essay input list -->
+      <div class="essay-list-section">
+        <div class="essay-list-header">
+          <h3>Essays</h3>
+          <button class="btn-add-essay" onclick="addEssay()">+ Add Essay</button>
+        </div>
+        <div id="essayList">
+          <div class="essay-input-item" id="essay-input-0">
+            <div class="essay-input-header">
+              <span class="essay-num">Essay 1</span>
+              <button class="remove-essay-btn" style="visibility:hidden" onclick="removeEssay(0)">×</button>
+            </div>
+            <textarea class="essay-textarea" placeholder="Paste or type essay 1 here..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results area -->
+      <div class="batch-results-section" id="batchResultsSection" style="display:none">
+        <div class="batch-results-header">Results</div>
+        <div id="batchResultsContainer"></div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn-primary" id="runBatchBtn" onclick="runBatch()">
+        <span>Run Batch</span>
+      </button>
+      <button class="btn-secondary" onclick="clearBatch()">Clear</button>
+      <div class="batch-progress-bar" id="batchProgressBar" style="display:none">
+        <div class="batch-progress-fill" id="batchProgressFill"></div>
+      </div>
+      <span class="status-msg" id="batchStatusMsg"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Shared ────────────────────────────────────────────────────────────────
+  const modelSelect   = document.getElementById('modelSelect');
+  const modelDesc     = document.getElementById('modelDesc');
+  let modelDescriptions = {};
+
+  modelSelect.addEventListener('change', () => {
+    modelDesc.textContent = modelDescriptions[modelSelect.value] || '';
+  });
+
+  async function loadModels() {
+    try {
+      const res = await fetch('/api/models');
+      const data = await res.json();
+
+      if (!res.ok) {
+        modelDesc.textContent = `Failed to load models: ${data.error}`;
+        return;
+      }
+
+      const DEFAULT_MODEL = 'gemini-2.0-flash';
+      modelSelect.innerHTML = '';
+      data.models.forEach(m => {
+        modelDescriptions[m.id] = m.description || m.displayName || '';
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.displayName || m.id;
+        if (m.id === DEFAULT_MODEL) opt.selected = true;
+        modelSelect.appendChild(opt);
+      });
+      modelSelect.disabled = false;
+      modelDesc.textContent = modelDescriptions[modelSelect.value] || '';
+    } catch {
+      modelDesc.textContent = 'Could not load models. Is the server running?';
+    }
+  }
+
+  loadModels();
+
+  function switchMode(mode) {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+    document.getElementById('singleContent').style.display  = mode === 'single' ? 'flex' : 'none';
+    document.getElementById('batchContent').style.display   = mode === 'batch'  ? 'flex' : 'none';
+    document.getElementById('singleControls').style.display = mode === 'single' ? '' : 'none';
+    document.getElementById('batchControls').style.display  = mode === 'batch'  ? '' : 'none';
+  }
+
+  function renderMarkdown(text) {
+    const lines = text.split('\n');
+    let html = '';
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('## Corrected Essay')) {
+        html += '<h2>Corrected Essay</h2>';
+        const remaining = lines.slice(i + 1).join('\n').trim();
+        const cleaned = remaining.replace(/^---\s*/, '').replace(/\s*---$/, '').trim();
+        html += `<div class="corrected-block">${escapeHtml(cleaned)}</div>`;
+        break;
+      } else if (line.startsWith('## ')) {
+        html += `<h2>${escapeHtml(line.slice(3))}</h2>`;
+      } else if (line.startsWith('### ')) {
+        html += `<h3>${escapeHtml(line.slice(4))}</h3>`;
+      } else if (line.trim() === '---') {
+        html += '<hr>';
+      } else if (line.trim() !== '') {
+        const processed = escapeHtml(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html += `<p>${processed}</p>`;
+      }
+    }
+    return html;
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── Single mode ───────────────────────────────────────────────────────────
+  const tempSlider    = document.getElementById('temperature');
+  const topPSlider    = document.getElementById('topP');
+  const tempDisplay   = document.getElementById('tempDisplay');
+  const topPDisplay   = document.getElementById('topPDisplay');
+  const essayInput    = document.getElementById('essayInput');
+  const charCount     = document.getElementById('charCount');
+  const submitBtn     = document.getElementById('submitBtn');
+  const outputContent = document.getElementById('outputContent');
+  const statusMsg     = document.getElementById('statusMsg');
+
+  tempSlider.addEventListener('input', () => {
+    tempDisplay.textContent = parseFloat(tempSlider.value).toFixed(2);
+    clearActivePresets();
+  });
+
+  topPSlider.addEventListener('input', () => {
+    topPDisplay.textContent = parseFloat(topPSlider.value).toFixed(2);
+    clearActivePresets();
+  });
+
+  essayInput.addEventListener('input', () => {
+    const len = essayInput.value.length;
+    charCount.textContent = `${len.toLocaleString()} character${len !== 1 ? 's' : ''}`;
+  });
+
+  function clearActivePresets() {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  }
+
+  function applyPreset(btn) {
+    clearActivePresets();
+    btn.classList.add('active');
+    const temp = parseFloat(btn.dataset.temp);
+    const topp = parseFloat(btn.dataset.topp);
+    tempSlider.value = temp;
+    topPSlider.value = topp;
+    tempDisplay.textContent = temp.toFixed(2);
+    topPDisplay.textContent = topp.toFixed(2);
+  }
+
+  function clearAll() {
+    essayInput.value = '';
+    charCount.textContent = '0 characters';
+    outputContent.innerHTML = '<p class="placeholder-msg">Results will appear here after analysis.</p>';
+    setStatus('', '');
+  }
+
+  function setStatus(msg, type) {
+    statusMsg.textContent = msg;
+    statusMsg.className = 'status-msg' + (type ? ` ${type}` : '');
+  }
+
+  function setLoading(loading) {
+    submitBtn.disabled = loading;
+    submitBtn.innerHTML = loading
+      ? '<div class="spinner"></div><span>Analyzing...</span>'
+      : '<span>Analyze Essay</span>';
+  }
+
+  async function submitEssay() {
+    const essay = essayInput.value.trim();
+    if (!essay) { setStatus('Please enter an essay first.', 'error'); return; }
+
+    setLoading(true);
+    setStatus('Sending to Gemini...', 'loading');
+    outputContent.innerHTML = '<p class="placeholder-msg">Analyzing your essay, please wait...</p>';
+
+    try {
+      const response = await fetch('/api/correct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          essay,
+          temperature: parseFloat(tempSlider.value),
+          topP: parseFloat(topPSlider.value),
+          model: modelSelect.value,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setStatus(`Error: ${data.error}`, 'error');
+        outputContent.innerHTML = `<p style="color:var(--error)">${escapeHtml(data.error)}</p>`;
+        return;
+      }
+      outputContent.innerHTML = renderMarkdown(data.result);
+      setStatus('Analysis complete.', 'success');
+    } catch {
+      setStatus('Network error. Is the server running?', 'error');
+      outputContent.innerHTML = `<p style="color:var(--error)">Could not reach the server.</p>`;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  essayInput.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submitEssay();
+  });
+
+  // ── Batch mode ────────────────────────────────────────────────────────────
+  const TEMP_LEVELS = [
+    { key: 'low', label: 'Low',  value: 0.10 },
+    { key: 'mid', label: 'Mid',  value: 0.30 },
+    { key: 'high', label: 'High', value: 0.70 },
+  ];
+  const TOPP_LEVELS = [
+    { key: 'low', label: 'Low',  value: 0.85 },
+    { key: 'mid', label: 'Mid',  value: 0.90 },
+    { key: 'high', label: 'High', value: 0.95 },
+  ];
+
+  let selectedTempKeys = new Set(TEMP_LEVELS.map(level => level.key));
+  let selectedTopPKeys = new Set(TOPP_LEVELS.map(level => level.key));
+  let essayCounter  = 1;   // used as unique ID for essay items
+  let batchRunning  = false;
+  let batchData     = [];  // [essayIdx][comboIdx] = { status, text, error }
+  let activeTab     = [];  // [essayIdx] = comboIdx
+  let currentCombos = [];  // snapshot of combos used for current run
+
+  function formatLevelValue(value) {
+    return Number.parseFloat(value).toFixed(2);
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function roundToStep(value, step) {
+    return Math.round(value / step) * step;
+  }
+
+  function getLevelState(param) {
+    if (param === 'temp') {
+      return {
+        levels: TEMP_LEVELS,
+        selectedKeys: selectedTempKeys,
+        buttonContainer: document.getElementById('tempLevelButtons'),
+        editorContainer: document.getElementById('tempLevelEditors'),
+        min: 0,
+        max: 2,
+        step: 0.01,
+      };
+    }
+
+    return {
+      levels: TOPP_LEVELS,
+      selectedKeys: selectedTopPKeys,
+      buttonContainer: document.getElementById('topPLevelButtons'),
+      editorContainer: document.getElementById('topPLevelEditors'),
+      min: 0,
+      max: 1,
+      step: 0.01,
+    };
+  }
+
+  function renderLevelControls(param) {
+    const state = getLevelState(param);
+    const { levels, selectedKeys, buttonContainer, editorContainer, min, max, step } = state;
+
+    buttonContainer.innerHTML = levels.map(level => `
+      <button class="level-btn ${selectedKeys.has(level.key) ? 'active' : ''}"
+              data-param="${param}"
+              data-key="${level.key}"
+              onclick="toggleLevel(this)">
+        ${escapeHtml(level.label)}<small>${formatLevelValue(level.value)}</small>
+      </button>
+    `).join('');
+
+    editorContainer.innerHTML = levels.map(level => `
+      <div class="level-editor-item">
+        <label>${escapeHtml(level.label)}</label>
+        <input type="number"
+               min="${min}"
+               max="${max}"
+               step="${step}"
+               value="${formatLevelValue(level.value)}"
+               data-param="${param}"
+               data-key="${level.key}"
+               onchange="updateLevelValue(this)"
+               onblur="updateLevelValue(this)">
+      </div>
+    `).join('');
+  }
+
+  function renderAllLevelControls() {
+    renderLevelControls('temp');
+    renderLevelControls('topp');
+    updateComboCount();
+  }
+
+  function toggleLevel(btn) {
+    const param = btn.dataset.param;
+    const key = btn.dataset.key;
+    const selectedKeys = param === 'temp' ? selectedTempKeys : selectedTopPKeys;
+
+    if (selectedKeys.has(key)) {
+      if (selectedKeys.size > 1) {
+        selectedKeys.delete(key);
+        btn.classList.remove('active');
+      }
+    } else {
+      selectedKeys.add(key);
+      btn.classList.add('active');
+    }
+    updateComboCount();
+  }
+
+  function updateLevelValue(input) {
+    const param = input.dataset.param;
+    const key = input.dataset.key;
+    const state = getLevelState(param);
+    const level = state.levels.find(item => item.key === key);
+    if (!level) return;
+
+    const parsed = Number.parseFloat(input.value);
+    if (!Number.isFinite(parsed)) {
+      input.value = formatLevelValue(level.value);
+      return;
+    }
+
+    const normalized = roundToStep(clamp(parsed, state.min, state.max), state.step);
+    level.value = normalized;
+    input.value = formatLevelValue(normalized);
+    renderLevelControls(param);
+  }
+
+  function updateComboCount() {
+    document.getElementById('comboCount').textContent = selectedTempKeys.size * selectedTopPKeys.size;
+  }
+
+  function getCombinations() {
+    const combos = [];
+    for (const t of TEMP_LEVELS) {
+      if (!selectedTempKeys.has(t.key)) continue;
+      for (const p of TOPP_LEVELS) {
+        if (!selectedTopPKeys.has(p.key)) continue;
+        combos.push({
+          temperature: t.value,
+          topP: p.value,
+          label: `T:${t.label} ${formatLevelValue(t.value)} / P:${p.label} ${formatLevelValue(p.value)}`,
+        });
+      }
+    }
+    return combos;
+  }
+
+  renderAllLevelControls();
+
+  function addEssay() {
+    const list = document.getElementById('essayList');
+    const uid  = essayCounter++;
+    const div  = document.createElement('div');
+    div.className = 'essay-input-item';
+    div.id = `essay-input-${uid}`;
+    const num = list.children.length + 1;
+    div.innerHTML = `
+      <div class="essay-input-header">
+        <span class="essay-num">Essay ${num}</span>
+        <button class="remove-essay-btn" onclick="removeEssay(${uid})">×</button>
+      </div>
+      <textarea class="essay-textarea" placeholder="Paste or type essay ${num} here..."></textarea>
+    `;
+    list.appendChild(div);
+    updateRemoveButtons();
+  }
+
+  function removeEssay(uid) {
+    const el = document.getElementById(`essay-input-${uid}`);
+    if (el) el.remove();
+    renumberEssays();
+    updateRemoveButtons();
+  }
+
+  function renumberEssays() {
+    document.querySelectorAll('#essayList .essay-input-item').forEach((item, i) => {
+      item.querySelector('.essay-num').textContent = `Essay ${i + 1}`;
+      const ta = item.querySelector('.essay-textarea');
+      if (!ta.value) ta.placeholder = `Paste or type essay ${i + 1} here...`;
+    });
+  }
+
+  function updateRemoveButtons() {
+    const items = document.querySelectorAll('#essayList .essay-input-item');
+    items.forEach(item => {
+      item.querySelector('.remove-essay-btn').style.visibility = items.length > 1 ? 'visible' : 'hidden';
+    });
+  }
+
+  function getEssays() {
+    return Array.from(document.querySelectorAll('#essayList .essay-textarea'))
+      .map(ta => ta.value.trim())
+      .filter(t => t.length > 0);
+  }
+
+  function setBatchStatus(msg, type) {
+    const el = document.getElementById('batchStatusMsg');
+    el.textContent = msg;
+    el.className = 'status-msg' + (type ? ` ${type}` : '');
+  }
+
+  function setBatchProgress(done, total) {
+    const bar  = document.getElementById('batchProgressBar');
+    const fill = document.getElementById('batchProgressFill');
+    if (total === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'block';
+    fill.style.width  = `${(done / total) * 100}%`;
+  }
+
+  async function runBatch() {
+    if (batchRunning) return;
+
+    const essays = getEssays();
+    if (essays.length === 0) { setBatchStatus('Please enter at least one essay.', 'error'); return; }
+
+    const combos = getCombinations();
+    if (combos.length === 0) { setBatchStatus('Select at least one level per parameter.', 'error'); return; }
+
+    currentCombos = combos;
+    const model   = modelSelect.value;
+    batchRunning  = true;
+    let completed = 0;
+    const total   = essays.length * combos.length;
+
+    // Init state
+    batchData  = essays.map(() => combos.map(() => ({ status: 'loading', text: null, error: null })));
+    activeTab  = essays.map(() => 0);
+
+    // Render skeleton
+    renderBatchSkeleton(essays, combos);
+    setBatchStatus(`0 / ${total} complete`, 'loading');
+    setBatchProgress(0, total);
+    document.getElementById('runBatchBtn').disabled = true;
+
+    // Fire all requests in parallel
+    const tasks = [];
+    essays.forEach((essay, ei) => {
+      combos.forEach((combo, ci) => {
+        const task = fetch('/api/correct', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ essay, temperature: combo.temperature, topP: combo.topP, model }),
+        })
+        .then(async r => {
+          const data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'API error');
+          return data.result;
+        })
+        .then(result => {
+          batchData[ei][ci] = { status: 'done', text: result, error: null };
+        })
+        .catch(err => {
+          batchData[ei][ci] = { status: 'error', text: null, error: err.message };
+        })
+        .finally(() => {
+          completed++;
+          updateResultCell(ei, ci);
+          updateEssayProgress(ei, combos.length);
+          setBatchStatus(`${completed} / ${total} complete`, completed === total ? 'success' : 'loading');
+          setBatchProgress(completed, total);
+        });
+        tasks.push(task);
+      });
+    });
+
+    await Promise.allSettled(tasks);
+    batchRunning = false;
+    document.getElementById('runBatchBtn').disabled = false;
+  }
+
+  function renderBatchSkeleton(essays, combos) {
+    const section   = document.getElementById('batchResultsSection');
+    const container = document.getElementById('batchResultsContainer');
+    container.innerHTML = '';
+
+    essays.forEach((essay, ei) => {
+      const card = document.createElement('div');
+      card.className = 'essay-result-card';
+      card.id = `essay-result-${ei}`;
+
+      const tabs = combos.map((combo, ci) => `
+        <button class="combo-tab ${ci === 0 ? 'active' : ''}"
+                id="ctab-${ei}-${ci}"
+                onclick="selectComboTab(${ei}, ${ci})">
+          ${escapeHtml(combo.label)}
+          <span class="tab-status" id="tstatus-${ei}-${ci}">⋯</span>
+        </button>
+      `).join('');
+
+      const preview = essay.substring(0, 70) + (essay.length > 70 ? '…' : '');
+      card.innerHTML = `
+        <div class="essay-result-header">
+          <span class="essay-result-label">Essay ${ei + 1}</span>
+          <span class="essay-preview-text">${escapeHtml(preview)}</span>
+          <span class="essay-progress" id="eprogress-${ei}">0 / ${combos.length}</span>
+        </div>
+        <div class="combo-tabs-wrapper">
+          <div class="combo-tabs">${tabs}</div>
+        </div>
+        <div class="combo-result-content" id="ccontent-${ei}">
+          <div class="result-loading"><div class="spinner"></div> Analyzing...</div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    section.style.display = 'flex';
+  }
+
+  function updateResultCell(ei, ci) {
+    const data      = batchData[ei][ci];
+    const tabStatus = document.getElementById(`tstatus-${ei}-${ci}`);
+    if (!tabStatus) return;
+
+    if (data.status === 'done') {
+      tabStatus.textContent = '✓';
+      tabStatus.className   = 'tab-status done';
+    } else if (data.status === 'error') {
+      tabStatus.textContent = '✗';
+      tabStatus.className   = 'tab-status err';
+    }
+
+    // Refresh content if this tab is currently active
+    if (activeTab[ei] === ci) renderComboContent(ei, ci);
+  }
+
+  function updateEssayProgress(ei, total) {
+    const done = batchData[ei].filter(d => d.status !== 'loading').length;
+    const el   = document.getElementById(`eprogress-${ei}`);
+    if (el) el.textContent = `${done} / ${total}`;
+  }
+
+  function renderComboContent(ei, ci) {
+    const content = document.getElementById(`ccontent-${ei}`);
+    if (!content) return;
+    const data = batchData[ei]?.[ci];
+    if (!data || data.status === 'loading') {
+      content.innerHTML = '<div class="result-loading"><div class="spinner"></div> Analyzing...</div>';
+    } else if (data.status === 'error') {
+      content.innerHTML = `<div class="result-error">Error: ${escapeHtml(data.error)}</div>`;
+    } else {
+      content.innerHTML = renderMarkdown(data.text);
+    }
+  }
+
+  function selectComboTab(ei, ci) {
+    activeTab[ei] = ci;
+    const total   = currentCombos.length;
+    for (let i = 0; i < total; i++) {
+      const tab = document.getElementById(`ctab-${ei}-${i}`);
+      if (tab) tab.classList.toggle('active', i === ci);
+    }
+    renderComboContent(ei, ci);
+  }
+
+  function clearBatch() {
+    batchData    = [];
+    activeTab    = [];
+    currentCombos = [];
+    document.getElementById('batchResultsSection').style.display = 'none';
+    document.getElementById('batchResultsContainer').innerHTML   = '';
+    setBatchStatus('', '');
+    setBatchProgress(0, 0);
+
+    // Reset essay list to one empty essay
+    essayCounter = 1;
+    document.getElementById('essayList').innerHTML = `
+      <div class="essay-input-item" id="essay-input-0">
+        <div class="essay-input-header">
+          <span class="essay-num">Essay 1</span>
+          <button class="remove-essay-btn" style="visibility:hidden" onclick="removeEssay(0)">×</button>
+        </div>
+        <textarea class="essay-textarea" placeholder="Paste or type essay 1 here..."></textarea>
+      </div>
+    `;
+  }
+</script>
+
+</body>
+</html>
